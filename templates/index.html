@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FraudShield AI 2.0 — Unified Fraud Intelligence Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #F4F1EC;
+    --surface: #FFFFFF;
+    --surface2: #EDE9E2;
+    --border: #D8D2C8;
+    --ink: #1A1612;
+    --ink-dim: #7A7268;
+    --accent: #C8460A;
+    --danger: #C8460A;
+    --warn: #D4860A;
+    --safe: #2A7A4A;
+    --safe-bg: #E8F5EE;
+    --warn-bg: #FEF6E4;
+    --danger-bg: #FCEEE8;
+    --shadow: 0 2px 12px rgba(26,22,18,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 28px; }
+
+  header { border-bottom: 2px solid var(--ink); padding: 18px 0; background: var(--bg); position: sticky; top: 0; z-index: 100; }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; }
+  .logo-word { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.06em; color: var(--ink); line-height: 1; }
+  .logo-word em { color: var(--accent); font-style: normal; }
+  .logo-tag { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-dim); letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid var(--border); padding: 3px 8px; }
+  .header-right { display: flex; align-items: center; gap: 20px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-dim); flex-wrap: wrap; }
+  .status-dot { display: flex; align-items: center; gap: 6px; color: var(--safe); font-weight: 500; }
+  .dot { width: 7px; height: 7px; background: var(--safe); border-radius: 50%; animation: blink 2s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* TAB BAR */
+  .tab-bar { display: flex; gap: 2px; margin-top: 16px; flex-wrap: wrap; }
+  .tab-btn {
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+    padding: 11px 18px; background: var(--surface2); border: 1px solid var(--border); border-bottom: none;
+    color: var(--ink-dim); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 7px;
+  }
+  .tab-btn:hover { color: var(--ink); background: var(--surface); }
+  .tab-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .tab-icon { font-size: 13px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+  .dashboard { padding: 28px 0 48px; display: grid; gap: 24px; }
+  .top-row { display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .panel-head { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .panel-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.1em; color: var(--ink); }
+  .panel-sub { font-size: 11px; color: var(--ink-dim); font-family: 'DM Mono', monospace; }
+  .form-body { padding: 24px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  label { font-size: 11px; font-family: 'DM Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); }
+  input[type="number"], input[type="text"], input[type="range"], select, textarea {
+    font-family: 'DM Mono', monospace; font-size: 13px; padding: 10px 12px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--ink); outline: none; transition: border 0.2s; -webkit-appearance: none; width: 100%;
+  }
+  textarea { resize: vertical; min-height: 120px; font-size: 13px; line-height: 1.5; }
+  input:focus, select:focus, textarea:focus { border-color: var(--ink); }
+  .toggle-row { display: flex; gap: 8px; }
+  .toggle-btn { flex: 1; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; padding: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--ink-dim); cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .toggle-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .slider-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .slider-val { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); text-align: right; }
+  input[type="range"] { padding: 0; height: 3px; background: var(--border); cursor: pointer; accent-color: var(--accent); }
+
+  .submit-btn {
+    width: 100%; font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.15em; padding: 16px;
+    background: var(--ink); color: var(--bg); border: none; cursor: pointer; transition: all 0.2s; margin-top: 8px;
+    position: relative; overflow: hidden;
+  }
+  .submit-btn::after { content: ''; position: absolute; inset: 0; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease; }
+  .submit-btn:hover::after { transform: scaleX(1); }
+  .submit-btn span { position: relative; z-index: 1; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .result-panel { display: flex; flex-direction: column; gap: 0; }
+  .gauge-section { padding: 28px 32px; display: flex; align-items: center; gap: 32px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .gauge-container { position: relative; width: 160px; flex-shrink: 0; }
+  .gauge-svg { width: 160px; height: 90px; overflow: visible; }
+  .gauge-center { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); text-align: center; }
+  .gauge-num { font-family: 'Bebas Neue', sans-serif; font-size: 42px; line-height: 1; transition: color 0.5s; }
+  .gauge-unit { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-dim); letter-spacing: 0.1em; }
+  .result-info { flex: 1; min-width: 200px; }
+  .result-decision { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 0.08em; line-height: 1; margin-bottom: 8px; transition: color 0.5s; }
+  .result-desc { font-size: 13px; color: var(--ink-dim); line-height: 1.6; margin-bottom: 16px; }
+  .model-scores { display: flex; gap: 16px; flex-wrap: wrap; }
+  .model-score-item { background: var(--surface2); padding: 10px 14px; border: 1px solid var(--border); }
+  .ms-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 4px; }
+  .ms-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--ink); }
+
+  .flags-box { padding: 20px 32px; }
+  .flags-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 10px; }
+  .flag-item { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 12.5px; line-height: 1.5; }
+  .flag-item:last-child { border-bottom: none; }
+  .flag-dot { flex-shrink: 0; margin-top: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-dim); }
+
+  .waiting-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; color: var(--ink-dim); gap: 12px; }
+  .waiting-icon { font-size: 40px; opacity: 0.3; }
+  .waiting-text { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; text-align: center; }
+
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .history-table th { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); text-align: left; padding: 10px 16px; border-bottom: 2px solid var(--ink); background: var(--surface2); }
+  .history-table td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink); }
+  .history-table tr:hover td { background: var(--surface2); }
+  .history-table tr.new-row td { animation: rowFlash 0.5s ease; }
+  @keyframes rowFlash { from { background: rgba(200,70,10,0.08); } to { background: transparent; } }
+
+  .badge { display: inline-block; font-size: 9px; font-weight: 600; letter-spacing: 0.08em; padding: 3px 8px; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+  .badge-danger { background: var(--danger-bg); color: var(--danger); }
+  .badge-warning { background: var(--warn-bg); color: var(--warn); }
+  .badge-safe { background: var(--safe-bg); color: var(--safe); }
+  .risk-pill { display: inline-block; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 2px; }
+
+  .chart-wrap { padding: 20px 24px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1px solid var(--border); border-bottom: none; }
+  .stat-item { padding: 20px 24px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); animation: fadeIn 0.4s ease; }
+  .stat-item:last-child { border-right: none; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; color: var(--ink); }
+  .stat-value.red { color: var(--danger); } .stat-value.amber { color: var(--warn); } .stat-value.green { color: var(--safe); }
+
+  .empty-history { padding: 40px; text-align: center; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .loading { display: flex; align-items: center; justify-content: center; padding: 48px; gap: 8px; }
+  .loading-dot { width: 8px; height: 8px; background: var(--ink); border-radius: 50%; animation: loadBounce 0.8s infinite ease-in-out; }
+  .loading-dot:nth-child(2) { animation-delay: 0.15s; } .loading-dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes loadBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
+
+  footer { border-top: 1px solid var(--border); padding: 16px 0; display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-dim); letter-spacing: 0.06em; flex-wrap: wrap; gap: 6px; }
+
+  /* QR upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border); background: var(--bg); padding: 40px 20px; text-align: center;
+    cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--danger-bg); }
+  .upload-zone-icon { font-size: 34px; opacity: 0.5; }
+  .upload-zone-text { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.06em; }
+  .upload-zone-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-dim); opacity: 0.7; }
+  #qr-preview { max-width: 100%; max-height: 180px; margin-top: 14px; border: 1px solid var(--border); display: none; }
+  .decoded-box { background: var(--surface2); border: 1px solid var(--border); padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 12px; word-break: break-all; margin-top: 14px; }
+
+  /* Dashboard tab */
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .dash-grid.full { grid-template-columns: 1fr; }
+  .chart-card-head { padding: 14px 22px; border-bottom: 1px solid var(--border); }
+  .refresh-btn {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 7px 14px; background: var(--ink); color: var(--bg); border: none; cursor: pointer;
+  }
+  .refresh-btn:hover { background: var(--accent); }
+  .report-btn {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 7px 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--ink); cursor: pointer;
+  }
+  .report-btn:hover { background: var(--ink); color: var(--bg); }
+  .head-actions { display: flex; gap: 10px; align-items: center; }
+
+  .verdict-tag { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.06em; }
+
+  @media (max-width: 1024px) {
+    .top-row { grid-template-columns: 1fr; }
+    .bottom-row { grid-template-columns: 1fr; }
+    .dash-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-word">FRAUD<em>SHIELD</em></div>
+        <div class="logo-tag">AI 2.0 — UNIFIED FRAUD INTELLIGENCE</div>
+      </div>
+      <div class="header-right">
+        <span id="clock">--:--:--</span>
+        <span>|</span>
+        <span>MODELS: RF+XGB · HEURISTIC ENGINES</span>
+        <span>|</span>
+        <div class="status-dot"><div class="dot"></div>ONLINE</div>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="tab-transaction" onclick="switchTab('tab-transaction', this)"><span class="tab-icon">💳</span>Transaction Fraud</button>
+      <button class="tab-btn" data-tab="tab-url" onclick="switchTab('tab-url', this)"><span class="tab-icon">🔗</span>Phishing URL</button>
+      <button class="tab-btn" data-tab="tab-sms" onclick="switchTab('tab-sms', this)"><span class="tab-icon">📩</span>SMS Scam</button>
+      <button class="tab-btn" data-tab="tab-qr" onclick="switchTab('tab-qr', this)"><span class="tab-icon">▦</span>QR Scanner</button>
+      <button class="tab-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard', this)"><span class="tab-icon">📊</span>Live Dashboard</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════════ TAB 1: TRANSACTION FRAUD ══════════════ -->
+  <div class="tab-panel active" id="tab-transaction">
+    <div class="dashboard">
+
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-label">Total Analyzed</div><div class="stat-value" id="stat-total">0</div></div>
+        <div class="stat-item"><div class="stat-label">Blocked</div><div class="stat-value red" id="stat-blocked">0</div></div>
+        <div class="stat-item"><div class="stat-label">Under Review</div><div class="stat-value amber" id="stat-review">0</div></div>
+        <div class="stat-item"><div class="stat-label">Cleared</div><div class="stat-value green" id="stat-cleared">0</div></div>
+      </div>
+
+      <div class="top-row">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Transaction Input</div>
+            <div class="panel-sub">Enter details to analyze</div>
+          </div>
+          <div class="form-body">
+            <div class="form-grid">
+              <div class="field"><label>Amount ($)</label><input type="number" id="amount" placeholder="e.g. 4500" min="0" step="0.01"></div>
+              <div class="field"><label>Hour of Day (0–23)</label><input type="number" id="hour" placeholder="e.g. 3" min="0" max="23"></div>
+              <div class="field"><label>Distance from Home (km)</label><input type="number" id="distance" placeholder="e.g. 8000" min="0"></div>
+              <div class="field"><label>Transactions (last 1hr)</label><input type="number" id="velocity" placeholder="e.g. 6" min="0"></div>
+              <div class="field full">
+                <label>Merchant Risk Score</label>
+                <div class="slider-wrap">
+                  <input type="range" id="merchant_risk" min="0" max="1" step="0.01" value="0.5" oninput="document.getElementById('mr-val').textContent = parseFloat(this.value).toFixed(2)">
+                  <div class="slider-val" id="mr-val">0.50</div>
+                </div>
+              </div>
+              <div class="field">
+                <label>New Device?</label>
+                <div class="toggle-row">
+                  <button class="toggle-btn" id="nd-no" onclick="setToggle('new_device','nd-no','nd-yes',0)">NO</button>
+                  <button class="toggle-btn active" id="nd-yes" onclick="setToggle('new_device','nd-yes','nd-no',1)">YES</button>
+                </div>
+                <input type="hidden" id="new_device" value="1">
+              </div>
+              <div class="field">
+                <label>Card Present?</label>
+                <div class="toggle-row">
+                  <button class="toggle-btn active" id="cp-no" onclick="setToggle('card_present','cp-no','cp-yes',0)">NO</button>
+                  <button class="toggle-btn" id="cp-yes" onclick="setToggle('card_present','cp-yes','cp-no',1)">YES</button>
+                </div>
+                <input type="hidden" id="card_present" value="0">
+              </div>
+            </div>
+            <button class="submit-btn" id="submit-btn" onclick="analyze()"><span>⊕ Analyze Transaction</span></button>
+          </div>
+        </div>
+
+        <div class="panel result-panel">
+          <div class="panel-head">
+            <div class="panel-title">Risk Assessment</div>
+            <div class="panel-sub" id="result-time">—</div>
+          </div>
+          <div id="result-area">
+            <div class="waiting-state"><div class="waiting-icon">🛡</div><div class="waiting-text">Awaiting transaction input</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-row">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Transaction History</div><div class="panel-sub" id="history-count">0 transactions</div></div>
+          <div id="history-area"><div class="empty-history">No transactions yet</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Risk Score History</div><div class="panel-sub">Last 20 transactions</div></div>
+          <div class="chart-wrap"><canvas id="risk-chart" height="220"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ TAB 2: PHISHING URL DETECTION ══════════════ -->
+  <div class="tab-panel" id="tab-url">
+    <div class="dashboard">
+      <div class="top-row">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">URL Input</div><div class="panel-sub">Paste a link to scan</div></div>
+          <div class="form-body">
+            <div class="field full" style="margin-bottom:16px;">
+              <label>Suspicious URL</label>
+              <input type="text" id="url-input" placeholder="e.g. http://paypal-login-secure.tk/verify">
+            </div>
+            <button class="submit-btn" id="url-submit-btn" onclick="analyzeUrl()"><span>⊕ Scan URL</span></button>
+          </div>
+        </div>
+        <div class="panel result-panel">
+          <div class="panel-head"><div class="panel-title">Risk Assessment</div><div class="panel-sub" id="url-result-time">—</div></div>
+          <div id="url-result-area">
+            <div class="waiting-state"><div class="waiting-icon">🔗</div><div class="waiting-text">Awaiting a URL to scan</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Scan History</div><div class="panel-sub" id="url-history-count">0 scans</div></div>
+        <div id="url-history-area"><div class="empty-history">No URLs scanned yet</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ TAB 3: SMS SCAM DETECTION ══════════════ -->
+  <div class="tab-panel" id="tab-sms">
+    <div class="dashboard">
+      <div class="top-row">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">SMS Input</div><div class="panel-sub">Paste the message text</div></div>
+          <div class="form-body">
+            <div class="field full" style="margin-bottom:16px;">
+              <label>SMS / Text Message</label>
+              <textarea id="sms-input" placeholder="e.g. URGENT! Your account has been suspended. Verify now at http://bit.ly/xyz"></textarea>
+            </div>
+            <button class="submit-btn" id="sms-submit-btn" onclick="analyzeSms()"><span>⊕ Scan Message</span></button>
+          </div>
+        </div>
+        <div class="panel result-panel">
+          <div class="panel-head"><div class="panel-title">Risk Assessment</div><div class="panel-sub" id="sms-result-time">—</div></div>
+          <div id="sms-result-area">
+            <div class="waiting-state"><div class="waiting-icon">📩</div><div class="waiting-text">Awaiting a message to scan</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Scan History</div><div class="panel-sub" id="sms-history-count">0 scans</div></div>
+        <div id="sms-history-area"><div class="empty-history">No messages scanned yet</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ TAB 4: QR CODE SCANNER ══════════════ -->
+  <div class="tab-panel" id="tab-qr">
+    <div class="dashboard">
+      <div class="top-row">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Upload QR Code</div><div class="panel-sub">Image → Decode → Analyze</div></div>
+          <div class="form-body">
+            <div class="upload-zone" id="qr-dropzone" onclick="document.getElementById('qr-file').click()">
+              <div class="upload-zone-icon">▦</div>
+              <div class="upload-zone-text">CLICK OR DRAG A QR IMAGE HERE</div>
+              <div class="upload-zone-sub">PNG, JPG — decoded entirely client→server, never stored</div>
+              <img id="qr-preview" alt="QR preview">
+            </div>
+            <input type="file" id="qr-file" accept="image/*" style="display:none" onchange="handleQrFile(this.files[0])">
+            <button class="submit-btn" id="qr-submit-btn" onclick="scanQr()" style="margin-top:16px;" disabled><span>⊕ Decode &amp; Analyze</span></button>
+          </div>
+        </div>
+        <div class="panel result-panel">
+          <div class="panel-head"><div class="panel-title">Scan Result</div><div class="panel-sub" id="qr-result-time">—</div></div>
+          <div id="qr-result-area">
+            <div class="waiting-state"><div class="waiting-icon">▦</div><div class="waiting-text">Upload a QR code image to begin</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ TAB 5: LIVE DASHBOARD ══════════════ -->
+  <div class="tab-panel" id="tab-dashboard">
+    <div class="dashboard">
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Fraud Intelligence Overview</div>
+          <div class="head-actions">
+            <span class="panel-sub" id="dash-updated">—</span>
+            <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+            <button class="report-btn" onclick="downloadReport()">⬇ Download Report</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-label">Fraud Attempts Today</div><div class="stat-value red" id="dash-attempts">—</div></div>
+        <div class="stat-item"><div class="stat-label">Genuine Transactions</div><div class="stat-value green" id="dash-genuine">—</div></div>
+        <div class="stat-item"><div class="stat-label">Blocked</div><div class="stat-value red" id="dash-blocked">—</div></div>
+        <div class="stat-item"><div class="stat-label">Under Review</div><div class="stat-value amber" id="dash-review">—</div></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="chart-card-head"><div class="panel-title">Risk Distribution</div></div>
+          <div class="chart-wrap"><canvas id="chart-pie" height="240"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="chart-card-head"><div class="panel-title">Fraud Categories</div></div>
+          <div class="chart-wrap"><canvas id="chart-categories" height="240"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="chart-card-head"><div class="panel-title">Hourly Attack Volume (ApexCharts)</div></div>
+        <div class="chart-wrap"><div id="chart-hourly"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="chart-card-head"><div class="panel-title">Attack Heatmap — Day × Hour (Plotly)</div></div>
+        <div class="chart-wrap"><div id="chart-heatmap"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="wrap">
+  <footer>
+    <span>FRAUDSHIELD AI 2.0 — RF+XGB ENSEMBLE · URL/SMS/QR HEURISTIC ENGINES</span>
+    <span>BUILT WITH FLASK · CHART.JS · APEXCHARTS · PLOTLY</span>
+  </footer>
+</div>
+
+<script>
+  // ══════════════════ TAB SWITCHING ══════════════════
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+    if (tabId === 'tab-dashboard') loadDashboard();
+  }
+
+  // ══════════════════ CLOCK ══════════════════
+  function tick() { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }
+  setInterval(tick, 1000); tick();
+
+  function gaugeSvg(score, colorMain) {
+    const angle = (score / 100) * 180;
+    const rad = (angle - 180) * Math.PI / 180;
+    const cx = 80, cy = 80, r = 60;
+    const x = cx + r * Math.cos(rad);
+    const y = cy + r * Math.sin(rad);
+    const largeArc = angle > 180 ? 1 : 0;
+    return `<svg class="gauge-svg" viewBox="0 0 160 90">
+        <path d="M 20 80 A 60 60 0 0 1 140 80" fill="none" stroke="#D8D2C8" stroke-width="10" stroke-linecap="round"/>
+        <path d="M 20 80 A 60 60 0 ${largeArc} 1 ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${colorMain}" stroke-width="10" stroke-linecap="round" style="transition: all 0.7s ease"/>
+      </svg>`;
+  }
+
+  const COLORS = {
+    danger:  { main: '#C8460A', bg: '#FCEEE8' },
+    warning: { main: '#D4860A', bg: '#FEF6E4' },
+    safe:    { main: '#2A7A4A', bg: '#E8F5EE' }
+  };
+
+  function flagsHtml(flags) {
+    if (!flags || !flags.length) return '';
+    return `<div class="flags-box">
+      <div class="flags-title">Signals Detected</div>
+      ${flags.map(f => `<div class="flag-item"><div class="flag-dot"></div><div>${escapeHtml(f)}</div></div>`).join('')}
+    </div>`;
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ══════════════════ TAB 1: TRANSACTION FRAUD ══════════════════
+  let history = [];
+  let stats = { total: 0, blocked: 0, review: 0, cleared: 0 };
+  let riskChart;
+
+  function setToggle(fieldId, activeId, inactiveId, val) {
+    document.getElementById(fieldId).value = val;
+    document.getElementById(activeId).classList.add('active');
+    document.getElementById(inactiveId).classList.remove('active');
+  }
+
+  function initChart() {
+    const ctx = document.getElementById('risk-chart').getContext('2d');
+    riskChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Risk Score', data: [], borderColor: '#C8460A', backgroundColor: 'rgba(200,70,10,0.07)', borderWidth: 2, pointBackgroundColor: [], pointRadius: 5, pointHoverRadius: 7, tension: 0.35, fill: true }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Risk: ${ctx.raw}` } } },
+        scales: {
+          y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'DM Mono', size: 10 }, color: '#7A7268' } },
+          x: { grid: { display: false }, ticks: { font: { family: 'DM Mono', size: 9 }, color: '#7A7268', maxRotation: 0 } }
+        }
+      }
+    });
+  }
+  initChart();
+
+  async function analyze() {
+    const amount = document.getElementById('amount').value;
+    const hour = document.getElementById('hour').value;
+    const distance = document.getElementById('distance').value;
+    const velocity = document.getElementById('velocity').value;
+    const merchant_risk = document.getElementById('merchant_risk').value;
+    const new_device = document.getElementById('new_device').value;
+    const card_present = document.getElementById('card_present').value;
+
+    if (!amount || !hour || !distance || !velocity) { alert('Please fill in all fields.'); return; }
+
+    document.getElementById('result-area').innerHTML = `<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>`;
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, hour, distance, velocity, merchant_risk, new_device, card_present }) });
+      const data = await res.json();
+      if (data.error) { document.getElementById('result-area').innerHTML = `<div class="waiting-state"><div class="waiting-text">Error: ${data.error}</div></div>`; return; }
+      showResult(data);
+      addHistory(data, amount);
+      updateStats(data.decision);
+      updateChart(data.risk_score);
+    } catch (err) {
+      document.getElementById('result-area').innerHTML = `<div class="waiting-state"><div class="waiting-icon">⚠️</div><div class="waiting-text">Cannot reach server. Is Flask running?</div></div>`;
+    } finally { btn.disabled = false; }
+  }
+
+  function showResult(data) {
+    const c = COLORS[data.color];
+    document.getElementById('result-time').textContent = new Date().toLocaleTimeString();
+    const descs = {
+      BLOCKED: 'High fraud probability detected. Transaction has been automatically blocked. Manual review recommended.',
+      REVIEW: 'Moderate risk signals detected. Transaction flagged for analyst review before processing.',
+      CLEARED: 'Transaction appears legitimate. Risk signals are within acceptable bounds. Approved to proceed.'
+    };
+    document.getElementById('result-area').innerHTML = `
+      <div class="gauge-section" style="background:${c.bg}20">
+        <div class="gauge-container">${gaugeSvg(data.risk_score, c.main)}
+          <div class="gauge-center"><div class="gauge-num" style="color:${c.main}">${data.risk_score}</div><div class="gauge-unit">/ 100 RISK</div></div>
+        </div>
+        <div class="result-info">
+          <div class="result-decision" style="color:${c.main}">${data.decision === 'BLOCKED' ? '🚨' : data.decision === 'REVIEW' ? '🔍' : '✅'} ${data.decision}</div>
+          <div class="result-desc">${descs[data.decision]}</div>
+          <div class="model-scores">
+            <div class="model-score-item"><div class="ms-label">Random Forest</div><div class="ms-val" style="color:${c.main}">${data.rf_score}</div></div>
+            <div class="model-score-item"><div class="ms-label">XGBoost</div><div class="ms-val" style="color:${c.main}">${data.xgb_score}</div></div>
+            <div class="model-score-item"><div class="ms-label">Ensemble</div><div class="ms-val" style="color:${c.main}">${data.risk_score}</div></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function addHistory(data, amount) {
+    const now = new Date().toLocaleTimeString();
+    history.unshift({ time: now, amount, ...data });
+    if (history.length > 50) history.pop();
+    const badgeClass = { danger: 'badge-danger', warning: 'badge-warning', safe: 'badge-safe' }[data.color];
+    const pillColor = { danger: '#C8460A', warning: '#D4860A', safe: '#2A7A4A' }[data.color];
+    const rows = history.slice(0, 15).map((h, i) => `
+      <tr class="${i === 0 ? 'new-row' : ''}">
+        <td>${h.time}</td><td>$${parseFloat(h.amount).toLocaleString()}</td>
+        <td><span class="risk-pill" style="color:${pillColor};background:${pillColor}18">${h.risk_score}</span></td>
+        <td><span class="badge ${badgeClass}">${h.decision}</span></td>
+      </tr>`).join('');
+    document.getElementById('history-area').innerHTML = `<table class="history-table"><thead><tr><th>Time</th><th>Amount</th><th>Risk</th><th>Decision</th></tr></thead><tbody>${rows}</tbody></table>`;
+    document.getElementById('history-count').textContent = history.length + ' transaction' + (history.length !== 1 ? 's' : '');
+  }
+
+  function updateStats(decision) {
+    stats.total++;
+    if (decision === 'BLOCKED') stats.blocked++; else if (decision === 'REVIEW') stats.review++; else stats.cleared++;
+    document.getElementById('stat-total').textContent = stats.total;
+    document.getElementById('stat-blocked').textContent = stats.blocked;
+    document.getElementById('stat-review').textContent = stats.review;
+    document.getElementById('stat-cleared').textContent = stats.cleared;
+  }
+
+  function updateChart(score) {
+    const label = new Date().toLocaleTimeString().slice(0,5);
+    const color = score >= 75 ? '#C8460A' : score >= 45 ? '#D4860A' : '#2A7A4A';
+    riskChart.data.labels.push(label);
+    riskChart.data.datasets[0].data.push(score);
+    riskChart.data.datasets[0].pointBackgroundColor.push(color);
+    if (riskChart.data.labels.length > 20) { riskChart.data.labels.shift(); riskChart.data.datasets[0].data.shift(); riskChart.data.datasets[0].pointBackgroundColor.shift(); }
+    riskChart.update();
+  }
+
+  // ══════════════════ TAB 2: PHISHING URL ══════════════════
+  let urlHistory = [];
+
+  async function analyzeUrl() {
+    const url = document.getElementById('url-input').value.trim();
+    if (!url) { alert('Please enter a URL.'); return; }
+    document.getElementById('url-result-area').innerHTML = `<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>`;
+    const btn = document.getElementById('url-submit-btn');
+    btn.disabled = true;
+    try {
+      const res = await fetch('/predict_url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const data = await res.json();
+      if (data.error) { document.getElementById('url-result-area').innerHTML = `<div class="waiting-state"><div class="waiting-text">Error: ${data.error}</div></div>`; return; }
+      document.getElementById('url-result-time').textContent = new Date().toLocaleTimeString();
+      const c = COLORS[data.color];
+      const icon = data.verdict === 'DANGEROUS' ? '🚨' : data.verdict === 'SUSPICIOUS' ? '🔍' : '✅';
+      document.getElementById('url-result-area').innerHTML = `
+        <div class="gauge-section" style="background:${c.bg}20">
+          <div class="gauge-container">${gaugeSvg(data.risk_score, c.main)}
+            <div class="gauge-center"><div class="gauge-num" style="color:${c.main}">${data.risk_score}</div><div class="gauge-unit">/ 100 RISK</div></div>
+          </div>
+          <div class="result-info">
+            <div class="result-decision" style="color:${c.main}">${icon} ${data.verdict}</div>
+            <div class="result-desc" style="word-break:break-all;">${escapeHtml(data.url)}</div>
+          </div>
+        </div>
+        ${flagsHtml(data.flags)}`;
+      urlHistory.unshift({ time: new Date().toLocaleTimeString(), ...data });
+      if (urlHistory.length > 50) urlHistory.pop();
+      renderUrlHistory();
+    } catch (err) {
+      document.getElementById('url-result-area').innerHTML = `<div class="waiting-state"><div class="waiting-icon">⚠️</div><div class="waiting-text">Cannot reach server.</div></div>`;
+    } finally { btn.disabled = false; }
+  }
+
+  function renderUrlHistory() {
+    const badgeClass = { danger: 'badge-danger', warning: 'badge-warning', safe: 'badge-safe' };
+    const rows = urlHistory.slice(0, 15).map((h, i) => `
+      <tr class="${i === 0 ? 'new-row' : ''}">
+        <td>${h.time}</td><td style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(h.url)}</td>
+        <td>${h.risk_score}</td><td><span class="badge ${badgeClass[h.color]}">${h.verdict}</span></td>
+      </tr>`).join('');
+    document.getElementById('url-history-area').innerHTML = `<table class="history-table"><thead><tr><th>Time</th><th>URL</th><th>Risk</th><th>Verdict</th></tr></thead><tbody>${rows}</tbody></table>`;
+    document.getElementById('url-history-count').textContent = urlHistory.length + ' scan' + (urlHistory.length !== 1 ? 's' : '');
+  }
+
+  // ══════════════════ TAB 3: SMS SCAM ══════════════════
+  let smsHistory = [];
+
+  async function analyzeSms() {
+    const message = document.getElementById('sms-input').value;
+    if (!message.trim()) { alert('Please enter a message.'); return; }
+    document.getElementById('sms-result-area').innerHTML = `<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>`;
+    const btn = document.getElementById('sms-submit-btn');
+    btn.disabled = true;
+    try {
+      const res = await fetch('/predict_sms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
+      const data = await res.json();
+      if (data.error) { document.getElementById('sms-result-area').innerHTML = `<div class="waiting-state"><div class="waiting-text">Error: ${data.error}</div></div>`; return; }
+      document.getElementById('sms-result-time').textContent = new Date().toLocaleTimeString();
+      const c = COLORS[data.color];
+      const icon = data.verdict === 'SCAM' ? '🚨' : data.verdict === 'SUSPICIOUS' ? '🔍' : '✅';
+      document.getElementById('sms-result-area').innerHTML = `
+        <div class="gauge-section" style="background:${c.bg}20">
+          <div class="gauge-container">${gaugeSvg(data.risk_score, c.main)}
+            <div class="gauge-center"><div class="gauge-num" style="color:${c.main}">${data.risk_score}</div><div class="gauge-unit">/ 100 RISK</div></div>
+          </div>
+          <div class="result-info"><div class="result-decision" style="color:${c.main}">${icon} ${data.verdict}</div></div>
+        </div>
+        ${flagsHtml(data.flags)}`;
+      smsHistory.unshift({ time: new Date().toLocaleTimeString(), message: message.slice(0,50), ...data });
+      if (smsHistory.length > 50) smsHistory.pop();
+      renderSmsHistory();
+    } catch (err) {
+      document.getElementById('sms-result-area').innerHTML = `<div class="waiting-state"><div class="waiting-icon">⚠️</div><div class="waiting-text">Cannot reach server.</div></div>`;
+    } finally { btn.disabled = false; }
+  }
+
+  function renderSmsHistory() {
+    const badgeClass = { danger: 'badge-danger', warning: 'badge-warning', safe: 'badge-safe' };
+    const rows = smsHistory.slice(0, 15).map((h, i) => `
+      <tr class="${i === 0 ? 'new-row' : ''}">
+        <td>${h.time}</td><td style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(h.message)}</td>
+        <td>${h.risk_score}</td><td><span class="badge ${badgeClass[h.color]}">${h.verdict}</span></td>
+      </tr>`).join('');
+    document.getElementById('sms-history-area').innerHTML = `<table class="history-table"><thead><tr><th>Time</th><th>Message</th><th>Risk</th><th>Verdict</th></tr></thead><tbody>${rows}</tbody></table>`;
+    document.getElementById('sms-history-count').textContent = smsHistory.length + ' scan' + (smsHistory.length !== 1 ? 's' : '');
+  }
+
+  // ══════════════════ TAB 4: QR SCANNER ══════════════════
+  let selectedQrFile = null;
+  const dropzone = document.getElementById('qr-dropzone');
+  ['dragover', 'dragenter'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+  dropzone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handleQrFile(f); });
+
+  function handleQrFile(file) {
+    if (!file) return;
+    selectedQrFile = file;
+    const preview = document.getElementById('qr-preview');
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+    document.getElementById('qr-submit-btn').disabled = false;
+  }
+
+  async function scanQr() {
+    if (!selectedQrFile) return;
+    document.getElementById('qr-result-area').innerHTML = `<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>`;
+    const btn = document.getElementById('qr-submit-btn');
+    btn.disabled = true;
+    try {
+      const formData = new FormData();
+      formData.append('qr_image', selectedQrFile);
+      const res = await fetch('/scan_qr', { method: 'POST', body: formData });
+      const data = await res.json();
+      document.getElementById('qr-result-time').textContent = new Date().toLocaleTimeString();
+
+      if (!data.success) {
+        document.getElementById('qr-result-area').innerHTML = `<div class="waiting-state"><div class="waiting-icon">⚠️</div><div class="waiting-text">${escapeHtml(data.error || 'Could not decode QR code.')}</div></div>`;
+        return;
+      }
+
+      if (data.is_url) {
+        const ua = data.url_analysis;
+        const c = COLORS[ua.color];
+        const icon = ua.verdict === 'DANGEROUS' ? '🚨' : ua.verdict === 'SUSPICIOUS' ? '🔍' : '✅';
+        document.getElementById('qr-result-area').innerHTML = `
+          <div class="gauge-section" style="background:${c.bg}20">
+            <div class="gauge-container">${gaugeSvg(ua.risk_score, c.main)}
+              <div class="gauge-center"><div class="gauge-num" style="color:${c.main}">${ua.risk_score}</div><div class="gauge-unit">/ 100 RISK</div></div>
+            </div>
+            <div class="result-info">
+              <div class="result-decision" style="color:${c.main}">${icon} ${ua.verdict}</div>
+              <div class="result-desc" style="word-break:break-all;">Decoded URL: ${escapeHtml(ua.url)}</div>
+            </div>
+          </div>
+          ${flagsHtml(ua.flags)}`;
+      } else {
+        document.getElementById('qr-result-area').innerHTML = `
+          <div class="gauge-section" style="background:${COLORS.safe.bg}20">
+            <div class="result-info">
+              <div class="result-decision" style="color:${COLORS.safe.main}">✅ DECODED</div>
+              <div class="result-desc">This QR code does not contain a URL.</div>
+            </div>
+          </div>
+          <div class="decoded-box">${escapeHtml(data.decoded_text)}</div>`;
+      }
+    } catch (err) {
+      document.getElementById('qr-result-area').innerHTML = `<div class="waiting-state"><div class="waiting-icon">⚠️</div><div class="waiting-text">Cannot reach server.</div></div>`;
+    } finally { btn.disabled = false; }
+  }
+
+  // ══════════════════ TAB 5: LIVE DASHBOARD ══════════════════
+  let pieChart, categoriesChart, hourlyApex;
+
+  async function loadDashboard() {
+    try {
+      const res = await fetch('/dashboard_data');
+      const d = await res.json();
+      document.getElementById('dash-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      document.getElementById('dash-attempts').textContent = d.fraud_attempts_today;
+      document.getElementById('dash-genuine').textContent = d.genuine_transactions;
+      document.getElementById('dash-blocked').textContent = d.blocked;
+      document.getElementById('dash-review').textContent = d.under_review;
+
+      renderPie(d.risk_distribution);
+      renderCategories(d.fraud_categories);
+      renderHourly(d.hourly_attacks);
+      renderHeatmap(d.heatmap);
+    } catch (err) {
+      document.getElementById('dash-updated').textContent = 'Failed to load dashboard data';
+    }
+  }
+
+  function renderPie(dist) {
+    const ctx = document.getElementById('chart-pie').getContext('2d');
+    const labels = Object.keys(dist);
+    const values = Object.values(dist);
+    const colors = ['#C8460A', '#D4860A', '#2A7A4A'];
+    if (pieChart) pieChart.destroy();
+    pieChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#FFFFFF', borderWidth: 2 }] },
+      options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Mono', size: 10 }, color: '#1A1612', padding: 14 } } } }
+    });
+  }
+
+  function renderCategories(cats) {
+    const ctx = document.getElementById('chart-categories').getContext('2d');
+    const labels = Object.keys(cats);
+    const values = Object.values(cats);
+    if (categoriesChart) categoriesChart.destroy();
+    categoriesChart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Incidents', data: values, backgroundColor: '#C8460A' }] },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'DM Mono', size: 9 }, color: '#7A7268' } },
+          y: { grid: { display: false }, ticks: { font: { family: 'DM Mono', size: 9 }, color: '#7A7268' } }
+        }
+      }
+    });
+  }
+
+  function renderHourly(hourly) {
+    const options = {
+      chart: { type: 'bar', height: 260, toolbar: { show: false }, fontFamily: 'DM Mono, monospace' },
+      series: [{ name: 'Attacks', data: hourly.values }],
+      xaxis: { categories: hourly.labels, labels: { style: { fontSize: '9px', colors: '#7A7268' }, rotate: 0 } },
+      yaxis: { labels: { style: { fontSize: '9px', colors: '#7A7268' } } },
+      colors: ['#C8460A'],
+      plotOptions: { bar: { borderRadius: 2, columnWidth: '55%' } },
+      dataLabels: { enabled: false },
+      grid: { borderColor: '#D8D2C8', strokeDashArray: 3 }
+    };
+    document.getElementById('chart-hourly').innerHTML = '';
+    if (hourlyApex) { try { hourlyApex.destroy(); } catch(e) {} }
+    hourlyApex = new ApexCharts(document.getElementById('chart-hourly'), options);
+    hourlyApex.render();
+  }
+
+  function renderHeatmap(hm) {
+    const data = [{
+      z: hm.matrix,
+      x: hm.hours,
+      y: hm.days,
+      type: 'heatmap',
+      colorscale: [[0, '#F4F1EC'], [0.5, '#D4860A'], [1, '#C8460A']],
+      showscale: true
+    }];
+    const layout = {
+      margin: { t: 10, l: 50, r: 10, b: 40 },
+      height: 300,
+      font: { family: 'DM Mono, monospace', size: 9, color: '#7A7268' },
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent'
+    };
+    Plotly.newPlot('chart-heatmap', data, layout, { displayModeBar: false, responsive: true });
+  }
+
+  function downloadReport() {
+    window.location.href = '/generate_report';
+  }
+
+  // Allow Enter key to submit on the transaction tab
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('tab-transaction').classList.contains('active')) analyze();
+  });
+</script>
+</body>
+</html>
