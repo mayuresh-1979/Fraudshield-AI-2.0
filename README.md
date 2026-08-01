@@ -130,7 +130,3 @@ Also deployable on Google Cloud Run, Hugging Face Spaces (Docker), or Fly.io wit
 A companion test dataset (sample URLs, SMS messages, transactions, and pre-generated QR code images with known-good/known-bad labels) is available separately for exercising every module end-to-end.
 
 ---
-
-## License
-
-Add your preferred license here (MIT, Apache 2.0, etc.) — none is currently specified.
